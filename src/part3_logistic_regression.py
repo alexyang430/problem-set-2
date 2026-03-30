@@ -21,5 +21,42 @@ from sklearn.linear_model import LogisticRegression as lr
 
 
 # Your code here
+def run_logistic_regression(df):
 
+    features = ['current_charge_felony', 'num_fel_arrests_last_year']
+    X = df[features].fillna(0)
+    y = df['y']
+
+    df_train, df_test = train_test_split(
+        df, test_size=0.3, shuffle=True, stratify=y, random_state=42
+    )
+
+    X_train = df_train[features].fillna(0)
+    y_train = df_train['y']
+
+    X_test = df_test[features].fillna(0)
+
+    param_grid = {'C': [0.01, 0.1, 1]}
+
+    lr_model = LogisticRegression(max_iter=1000)
+
+    gs_cv = GridSearchCV(lr_model, param_grid, cv=5)
+    gs_cv.fit(X_train, y_train)
+
+    best_c = gs_cv.best_params_['C']
+    print(f"Best C: {best_c}")
+
+    if best_c == min(param_grid['C']):
+        print("Most regularization")
+    elif best_c == max(param_grid['C']):
+        print("Least regularization")
+    else:
+        print("Middle regularization")
+
+    df_test['pred_lr'] = gs_cv.predict_proba(X_test)[:, 1]
+
+    df_train.to_csv("data/train.csv", index=False)
+    df_test.to_csv("data/test_lr.csv", index=False)
+
+    return df_train, df_test
 

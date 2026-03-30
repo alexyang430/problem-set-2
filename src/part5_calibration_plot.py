@@ -14,7 +14,9 @@ Extra Credit
 '''
 
 # Import any further packages you may need for PART 5
+import pandas as pd
 from sklearn.calibration import calibration_curve
+from sklearn.metrics import roc_auc_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -44,3 +46,51 @@ def calibration_plot(y_true, y_prob, n_bins=10):
     plt.title("Calibration Plot")
     plt.legend(loc="best")
     plt.show()
+
+def run_calibration():
+
+    # Read in data
+    df = pd.read_csv("data/test_final.csv")
+
+    y = df['y']
+
+    # --- Calibration plots ---
+    print("Generating calibration plot for Logistic Regression...")
+    calibration_plot(y, df['pred_lr'], n_bins=5)
+
+    print("Generating calibration plot for Decision Tree...")
+    calibration_plot(y, df['pred_dt'], n_bins=5)
+
+    # --- Calibration comparison ---
+    print("\nWhich model is more calibrated?")
+    print("Answer: Compare the plots — the model closer to the 45-degree line is better calibrated.")
+
+    top_lr = df.nlargest(50, 'pred_lr')
+    top_dt = df.nlargest(50, 'pred_dt')
+
+    ppv_lr = top_lr['y'].mean()
+    ppv_dt = top_dt['y'].mean()
+
+    print(f"\nPPV (Top 50) - Logistic Regression: {ppv_lr}")
+    print(f"PPV (Top 50) - Decision Tree: {ppv_dt}")
+
+    # --- AUC ---
+    auc_lr = roc_auc_score(y, df['pred_lr'])
+    auc_dt = roc_auc_score(y, df['pred_dt'])
+
+    print(f"\nAUC - Logistic Regression: {auc_lr}")
+    print(f"AUC - Decision Tree: {auc_dt}")
+
+    # --- Comparison ---
+    print("\nDo both metrics agree on which model is more accurate?")
+
+    better_auc = "Logistic Regression" if auc_lr > auc_dt else "Decision Tree"
+    better_ppv = "Logistic Regression" if ppv_lr > ppv_dt else "Decision Tree"
+
+    print(f"AUC favors: {better_auc}")
+    print(f"PPV favors: {better_ppv}")
+
+    if better_auc == better_ppv:
+        print("Yes, both metrics agree.")
+    else:
+        print("No, the metrics do not agree.")

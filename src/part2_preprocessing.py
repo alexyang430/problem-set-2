@@ -17,10 +17,66 @@ PART 2: Pre-processing
 '''
 
 # import the necessary packages
-
+import pandas as pd
 
 
 # Your code here
+def run_preprocessing():
 
+    pred = pd.read_csv("data/pred_universe_raw.csv")
+    events = pd.read_csv("data/arrest_events_raw.csv")
+
+    pred['arrest_date_univ'] = pd.to_datetime(pred['arrest_date_univ'])
+    events['arrest_date_event'] = pd.to_datetime(events['arrest_date_event'])
+
+    df = pred.merge(events, on="person_id", how="outer")
+
+    
+    df['y'] = 0
+
+    for i, row in df.iterrows():
+        if pd.notnull(row['arrest_date_univ']):
+            start = row['arrest_date_univ'] + pd.Timedelta(days=1)
+            end = row['arrest_date_univ'] + pd.Timedelta(days=365)
+
+            future_events = events[
+                (events['person_id'] == row['person_id']) &
+                (events['arrest_date_event'] >= start) &
+                (events['arrest_date_event'] <= end) &
+                (events['charge_type'] == 'F')
+            ]
+
+            if len(future_events) > 0:
+                df.at[i, 'y'] = 1
+
+    print("Share rearrested for felony:", df['y'].mean())
+
+   
+    df['current_charge_felony'] = (df['charge_type'] == 'F').astype(int)
+    print("Share current felonies:", df['current_charge_felony'].mean())
+
+    
+    df['num_fel_arrests_last_year'] = 0
+
+    for i, row in df.iterrows():
+        if pd.notnull(row['arrest_date_univ']):
+            start = row['arrest_date_univ'] - pd.Timedelta(days=365)
+            end = row['arrest_date_univ'] - pd.Timedelta(days=1)
+
+            past_events = events[
+                (events['person_id'] == row['person_id']) &
+                (events['arrest_date_event'] >= start) &
+                (events['arrest_date_event'] <= end) &
+                (events['charge_type'] == 'F')
+            ]
+
+            df.at[i, 'num_fel_arrests_last_year'] = len(past_events)
+
+    print("Avg felony arrests last year:", df['num_fel_arrests_last_year'].mean())
+    print(df.head())
+
+    df.to_csv("data/df_arrests.csv", index=False)
+
+    return df
 
 
